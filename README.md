@@ -91,7 +91,9 @@ npm install
 Create a `.env` file:
 
 PORT=
+
 MONGO_URI=
+
 REDIS_HOST=localhost  
 REDIS_PORT=6379  
 
