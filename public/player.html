@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HLS Video Player</title>
+</head>
+<body>
+    <h2>My Video Streaming Pipeline</h2>
+    <div id="processing">
+        <h3>Video Processing</h3>
+
+        <p id="stage">Waiting...</p>
+
+        <progress id="progressBar" value="0" max="100"></progress>
+
+        <span id="progressText">0%</span>
+    </div>
+
+    <br>
+    <video id="video" controls width="800"></video>
+
+    <br><br>
+
+    <label for="quality">Quality:</label>
+    <select id="quality">
+        <option value="-1">Auto</option>
+    </select>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+
+    <script>
+        const videoId = "6b026957fd2ae00e63b625b0";
+
+        const progressBar = document.getElementById("progressBar");
+        const progressText = document.getElementById("progressText");
+        const stageText = document.getElementById("stage");
+        const processingDiv = document.getElementById("processing");
+
+        let playerInitialized = false;
+
+        const initializePlayer = () => {
+            if (playerInitialized) return;
+
+            playerInitialized = true;
+
+            const video = document.getElementById("video");
+            const quality = document.getElementById("quality");
+
+            const videoUrl = `/api/stream/${videoId}/master.m3u8`;
+
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+
+                hls.loadSource(videoUrl);
+                hls.attachMedia(video);
+
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    console.log("Available qualities:", hls.levels);
+
+                    hls.levels.forEach((level, index) => {
+                        const option = document.createElement("option");
+
+                        option.value = index;
+                        option.textContent = `${level.height}p`;
+
+                        quality.appendChild(option);
+                    });
+                });
+
+                quality.addEventListener("change", () => {
+                    hls.currentLevel = Number(quality.value);
+                });
+
+            } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+                video.src = videoUrl;
+            }
+        };
+
+        const checkProcessingStatus = async () => {
+            try {
+                const response = await fetch(`/api/video/${videoId}/status`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                progressBar.value = data.progress;
+                progressText.textContent = `${data.progress}%`;
+                stageText.textContent = data.stage;
+
+                if (data.status === "completed") {
+                    clearInterval(pollingInterval);
+
+                    progressBar.value = 100;
+                    progressText.textContent = "100%";
+                    stageText.textContent = "Ready to Play";
+
+                    initializePlayer();
+                }
+
+                if (data.status === "failed") {
+                    clearInterval(pollingInterval);
+                    stageText.textContent = "Processing failed!";
+                }
+
+            } catch (err) {
+                console.error("Status polling failed:", err);
+            }
+        };
+
+        const pollingInterval = setInterval(checkProcessingStatus, 1000);
+
+        checkProcessingStatus();
+    </script>
+</body>
+</html>

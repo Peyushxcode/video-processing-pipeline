@@ -1,7 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const { addVideoJob } = require("../controllers/videoController");
+const { addVideoJob, getUploadUrl , registerUploadedVideo, getVideoStatus} = require("../controllers/videoController");
 
 router.post("/process", addVideoJob);
+router.post("/upload-url", getUploadUrl);
+router.post("/register", registerUploadedVideo);
+router.get("/:videoId/status", getVideoStatus);
 
 module.exports = router;

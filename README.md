@@ -110,6 +110,7 @@ node server.js
 ## 🧪 Example Workflow
 
 - Upload a video file via API  
+    "videoUrl": "https://cdn.truefilesize.com/mp4/sample-5mb.mp4"
 - Job is added to queue  
 - Worker processes video using FFmpeg 
 - Implement job progress tracking 

@@ -1,4 +1,9 @@
 const ffmpeg = require("fluent-ffmpeg");
+
+ffmpeg.setFfprobePath(
+    "C:\\ProgramData\\chocolatey\\lib\\ffmpeg\\tools\\ffmpeg\\bin\\ffprobe.exe"
+);
+
 const path = require("path");
 
 const generateThumbnail = (inputPath, outputPath) => {
