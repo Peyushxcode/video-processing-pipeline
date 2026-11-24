@@ -1,6 +1,7 @@
 const videoQueue = require("../queue/videoQueue");
 const Video = require("../models/Video");
 const generateUploadUrl = require("../utils/generateUploadUrl");
+const { addClient , removeClient } = require("../events/sseManager");
 
 const addVideoJob = async (req, res) => {
     try {
@@ -169,6 +170,58 @@ const getVideoStatus = async (req, res) => {
     }
 };
 
+const subscribeToProgress = async (req, res) => {
+    try {
+        const { videoId } = req.params;
+
+        const video = await Video.findById(videoId);
+
+        if (!video) {
+            return res.status(404).json({
+                message: "Video not found"
+            });
+        }
+
+        if (!video.jobId) {
+            return res.status(404).json({
+                message: "Job not found"
+            });
+        }
+
+        const jobId = String(video.jobId);
+
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader("X-Accel-Buffering", "no");
+
+        res.flushHeaders();
+
+        addClient(jobId, res);
+
+        res.on("close", () => {
+            removeClient(jobId, res);
+        });
+
+        res.write(`data: ${JSON.stringify({
+            message: "Connected",
+            videoId,
+            jobId
+        })}\n\n`);
+
+    } catch (err) {
+        console.error(err);
+
+        if (!res.headersSent) {
+            return res.status(500).json({
+                message: "Unable to establish SSE connection"
+            });
+        }
+
+        res.end();
+    }
+};
+
 module.exports = {
-    addVideoJob, getUploadUrl, registerUploadedVideo, getVideoStatus
+    addVideoJob, getUploadUrl, registerUploadedVideo, getVideoStatus, subscribeToProgress
 };

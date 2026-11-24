@@ -1,4 +1,4 @@
-const ffmpeg = require("fluent-ffmpeg");
+const ffmpeg = require("../config/ffmpeg");
 
 const generateHLS = (inputPath, playlistPath) => {
     return new Promise((resolve, reject) => {

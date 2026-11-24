@@ -1,4 +1,4 @@
-const ffmpeg = require("fluent-ffmpeg");
+const ffmpeg = require("../config/ffmpeg");
 
 const transcodeVideo = (inputPath, outputPath, resolution) => {
     return new Promise((resolve, reject) => {

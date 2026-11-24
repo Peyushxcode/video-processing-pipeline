@@ -29,7 +29,9 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 
     <script>
-        const videoId = "6b026957fd2ae00e63b625b0";
+        const params = new URLSearchParams(window.location.search);
+
+        const videoId = params.get("videoId");
 
         const progressBar = document.getElementById("progressBar");
         const progressText = document.getElementById("progressText");
@@ -76,43 +78,76 @@
             }
         };
 
-        const checkProcessingStatus = async () => {
-            try {
-                const response = await fetch(`/api/video/${videoId}/status`);
+        const updateProgressUI = (data) => {
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const data = await response.json();
-
+            if (typeof data.progress === "number") {
                 progressBar.value = data.progress;
                 progressText.textContent = `${data.progress}%`;
-                stageText.textContent = data.stage;
+            }
 
-                if (data.status === "completed") {
-                    clearInterval(pollingInterval);
+            if (data.status === "pending") {
+                stageText.textContent = "Waiting in queue...";
+            }
 
-                    progressBar.value = 100;
-                    progressText.textContent = "100%";
-                    stageText.textContent = "Ready to Play";
+            if (data.status === "processing") {
+                stageText.textContent = "Processing video...";
+            }
 
-                    initializePlayer();
-                }
+            if (data.status === "completed") {
+                progressBar.value = 100;
+                progressText.textContent = "100%";
+                stageText.textContent = "Ready to Play";
 
-                if (data.status === "failed") {
-                    clearInterval(pollingInterval);
-                    stageText.textContent = "Processing failed!";
-                }
+                initializePlayer();
+            }
 
-            } catch (err) {
-                console.error("Status polling failed:", err);
+            if (data.status === "failed") {
+                stageText.textContent = "Processing failed!";
             }
         };
 
-        const pollingInterval = setInterval(checkProcessingStatus, 1000);
+        const connectToProgress = () => {
 
-        checkProcessingStatus();
+            const source = new EventSource(
+                `/api/video/${videoId}/progress`
+            );
+
+            source.onopen = () => {
+                console.log("SSE connection established");
+            };
+
+            source.onmessage = (event) => {
+
+                const data = JSON.parse(event.data);
+
+                console.log("SSE event received:", data);
+
+                if (data.message === "Connected") {
+                    return;
+                }
+
+                updateProgressUI(data);
+
+                if (
+                    data.status === "completed" ||
+                    data.status === "failed"
+                ) {
+                    source.close();
+
+                    console.log("SSE connection closed");
+                }
+            };
+
+            source.onerror = (err) => {
+                console.error("SSE connection error:", err);
+            };
+        };
+
+        if (videoId) {
+            connectToProgress();
+        } else {
+            stageText.textContent = "No video selected";
+        }
     </script>
 </body>
 </html>

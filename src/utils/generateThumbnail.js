@@ -1,8 +1,4 @@
-const ffmpeg = require("fluent-ffmpeg");
-
-ffmpeg.setFfprobePath(
-    "C:\\ProgramData\\chocolatey\\lib\\ffmpeg\\tools\\ffmpeg\\bin\\ffprobe.exe"
-);
+const ffmpeg = require("../config/ffmpeg");
 
 const path = require("path");
 
