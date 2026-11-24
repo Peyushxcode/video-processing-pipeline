@@ -203,11 +203,39 @@ const subscribeToProgress = async (req, res) => {
             removeClient(jobId, res);
         });
 
-        res.write(`data: ${JSON.stringify({
-            message: "Connected",
+        // Fetch the current job from Redis
+        const job = await videoQueue.getJob(jobId);
+
+        const jobState = job ? await job.getState() : null;
+
+        // Fetch the latest persisted video status
+        const latestVideo = await Video.findById(videoId);
+
+        let status = latestVideo.status;
+        let progress = job ? job.progress : 0;
+
+        if (status === "completed" || jobState === "completed") {
+            status = "completed";
+            progress = 100;
+        }
+        else if (status === "failed" || jobState === "failed") {
+            status = "failed";
+        }
+        else if (jobState === "active") {
+            status = "processing";
+        }
+
+        const snapshot = {
+            type: "snapshot",
             videoId,
-            jobId
-        })}\n\n`);
+            jobId,
+            status,
+            progress
+        };
+
+        if (!res.destroyed && !res.writableEnded) {
+            res.write(`data: ${JSON.stringify(snapshot)}\n\n`);
+        }
 
     } catch (err) {
         console.error(err);

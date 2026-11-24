@@ -29,6 +29,8 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 
     <script>
+        let latestProgress = 0;
+        let terminalState = false;
         const params = new URLSearchParams(window.location.search);
 
         const videoId = params.get("videoId");
@@ -122,16 +124,30 @@
 
                 console.log("SSE event received:", data);
 
-                if (data.message === "Connected") {
-                    return;
+                if (terminalState) return;
+
+                const isTerminal =
+                    data.status === "completed" ||
+                    data.status === "failed";
+
+                if (typeof data.progress === "number") {
+
+                    if (!isTerminal && data.progress < latestProgress) {
+                        return;
+                    }
+
+                    latestProgress = Math.max(
+                        latestProgress,
+                        data.progress
+                    );
+
+                    data.progress = latestProgress;
                 }
 
                 updateProgressUI(data);
 
-                if (
-                    data.status === "completed" ||
-                    data.status === "failed"
-                ) {
+                if (isTerminal) {
+                    terminalState = true;
                     source.close();
 
                     console.log("SSE connection closed");

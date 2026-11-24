@@ -7,25 +7,39 @@ const videoQueueEvents = require("./events/videoQueueEvents");
 
 const connectDB = require("./config/db");
 const path = require("path");
+const os = require("os");
 
 connectDB();
 
+
 const app = express();
+
+const serverId = `${os.hostname()}-${process.pid}`;
+
+app.use((req, res, next) => {
+    res.setHeader("X-Server-Id", serverId);
+
+    console.log(
+        `[${serverId}] ${req.method} ${req.originalUrl}`
+    );
+
+    next();
+});
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "../public")));
 
-app.get("/", (req, res) => {
-  res.send("Video Pipeline API Running");
-});
-
-app.use("/api/video" , videoRoutes);
+app.use("/api/video", videoRoutes);
 app.use("/api/stream", streamRoutes);
 
 app.use(
     "/stream",
     express.static(path.join(__dirname, "../temp"))
 );
+
+app.get("/", (req, res) => {
+  res.send("Video Pipeline API Running");
+});
 
 app.get("/test-sse", (req, res) => {
 
@@ -50,7 +64,7 @@ app.get("/test-sse", (req, res) => {
     });
 });
 
-const PORT = process.env.PORT || 5200;
+const PORT = Number(process.env.PORT || 5200);
 
 videoQueueEvents.waitUntilReady()
     .then(() => {
@@ -59,5 +73,6 @@ videoQueueEvents.waitUntilReady()
     .catch(console.error);
 
 app.listen(PORT, () => {
+  console.log(`Server ID: ${serverId}`);
   console.log(`Server running on port ${PORT}`);
 });

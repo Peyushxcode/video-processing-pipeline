@@ -11,6 +11,7 @@ const generateMasterPlaylist = require("../utils/generateMasterPlaylist");
 const uploadDirectoryToS3 = require("../utils/uploadDirectoryToS3");
 const uploadToS3 = require("../utils/uploadToS3");
 
+const os = require("os");
 const fs = require("fs-extra");
 
 const tempDir = path.join(__dirname, "../../temp");
@@ -22,10 +23,17 @@ mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/video-pipel
     console.log("Worker DB connected");
 });
 
+
+const workerId = `${os.hostname()}-${process.pid}`;
+
+console.log(`Worker started: ${workerId}`);
+console.log(`Worker concurrency: ${process.env.WORKER_CONCURRENCY || 1}`);
+
 const videoWorker = new Worker("video-processing", async (job) => {
+    const startTime = Date.now();
     const { s3Key, videoId } = job.data;
 
-    console.log("Processing job:", job.id);
+    console.log(`[${workerId}] Processing job: ${job.id}`);
     console.log("Temp dir:", tempDir);
 
     const jobTempDir = path.join(tempDir, String(job.id));
@@ -128,11 +136,16 @@ const videoWorker = new Worker("video-processing", async (job) => {
 
     console.log(`Finished processing video: ${videoId}`);
     await job.updateProgress(100);
+    const duration = (Date.now() - startTime) / 1000;
 
+    console.log(
+        `[${workerId}] Job ${job.id} processed in ${duration}s`
+    );
     return { success: true };
 
 }, {
     connection,
+    concurrency: Number(process.env.WORKER_CONCURRENCY || 1)
 });
 
 videoWorker.on("completed", (job, result) => {

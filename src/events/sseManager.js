@@ -44,6 +44,29 @@ const broadcast = (jobId, data) => {
     }
 };
 
+const sendHeartbeat = () => {
+
+    for (const [jobId, jobClients] of clients) {
+
+        for (const res of jobClients) {
+
+            if (res.destroyed || res.writableEnded) {
+                removeClient(jobId, res);
+                continue;
+            }
+
+            res.write(": heartbeat\n\n");
+        }
+    }
+};
+
+const heartbeatInterval = setInterval(
+    sendHeartbeat,
+    15000
+);
+
+heartbeatInterval.unref();
+
 module.exports = {
     addClient,
     removeClient,
